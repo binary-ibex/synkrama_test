@@ -26,4 +26,7 @@ class Tag(models.Model):
 class BlockUser(models.Model):
     block_user = models.ForeignKey(to=User, on_delete=models.CASCADE, related_name='block_user_user')
     author = models.ForeignKey(to=User, on_delete=models.CASCADE, related_name='author_user')
+
+    def __str__(self) -> str:
+        return (self.block_user.username or " ") + "   x   " + (self.author.username or " ")
     

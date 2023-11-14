@@ -1,16 +1,18 @@
 from rest_framework import generics, status
-from blog_app.filters import BlogPostAuthorFilterBackend, BlogPostSearchFilterBackend, BlogPostTagFilterBackend, TagSearchFilterBackend
-from blog_app.serializers import BlogPostCreateSerializer, BlogPostDetailSerializer, BlogPostListSerializer, TagSerializer
-from .models import BlogPost, Tag
+from blog_app.filters import BlockUserFilterBackend, BlogPostAuthorFilterBackend, BlogPostBlockUserFilterBackend, BlogPostSearchFilterBackend, BlogPostTagFilterBackend, TagSearchFilterBackend
+from blog_app.serializers import BlockUnblockUserSerializer, BlockUserSerializer, BlogPostCreateSerializer, BlogPostDetailSerializer, BlogPostListSerializer, TagSerializer
+from .models import BlockUser, BlogPost, Tag
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
 
 class BlogPostView(generics.GenericAPIView):
-    queryset = BlogPost.objects.filter(is_deleted=False).order_by('-created_on')
+    queryset = BlogPost.objects.filter(
+        is_deleted=False).order_by('-created_on')
     permission_classes = [IsAuthenticated]
     serializer_class = BlogPostDetailSerializer
-    filter_backends = [BlogPostTagFilterBackend, BlogPostAuthorFilterBackend, BlogPostSearchFilterBackend]
+    filter_backends = [BlogPostTagFilterBackend,
+                       BlogPostAuthorFilterBackend, BlogPostSearchFilterBackend, BlogPostBlockUserFilterBackend]
     lookup_field = 'pk'
 
     def get(self, request, *args, **kwargs):
@@ -99,7 +101,7 @@ class TagView(generics.GenericAPIView):
             searilizer = self.get_serializer(queryset, many=True)
         return Response(
             status=status.HTTP_200_OK,
-            data={'data':searilizer.data}
+            data={'data': searilizer.data}
         )
 
     def post(self, request, *args, **kwargs):
@@ -146,5 +148,66 @@ class TagView(generics.GenericAPIView):
             data={
                 'message': response_message
             },
+            status=status_code
+        )
+
+
+class BlockUserView(generics.GenericAPIView):
+    queryset = BlockUser.objects.all()
+    serializer_class = BlockUserSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [BlockUserFilterBackend]
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        queryset = self.filter_queryset(queryset)
+        serializer = self.get_serializer(queryset, many=True)
+        status_code = status.HTTP_200_OK
+        response = {
+            "data": serializer.data
+        }
+        return Response(
+            data=response,
+            status=status_code
+        )
+
+
+class BlockUnblockUserView(generics.GenericAPIView):
+    queryset = BlockUser.objects.all()
+    serializer_class = BlockUserSerializer
+    filter_backends = [BlockUserFilterBackend]
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'pk'
+
+    def post(self, request, *args, **kwargs):
+        serializer = BlockUnblockUserSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.validated_data["author"] = request.user
+            instance = serializer.create(
+                validated_data=serializer.validated_data)
+            response = {"data": self.get_serializer(instance).data}
+            status_code = status.HTTP_201_CREATED
+        else:
+            response = {"detail": "Invalid Payload"}
+            status_code = status.HTTP_400_BAD_REQUEST
+
+        return Response(
+            data=response,
+            status=status_code
+        )
+
+    def delete(self, request, *args, **kwargs):
+        pk = kwargs.get("pk")
+        if pk:
+            instance = self.get_object()
+            if instance:
+                instance.delete()
+
+            response = {"message": "Unblocked user success"}
+            status_code = status.HTTP_200_OK
+
+        return Response(
+            data=response,
             status=status_code
         )

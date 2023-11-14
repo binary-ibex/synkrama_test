@@ -1,6 +1,8 @@
 from rest_framework import filters
 from django.db.models import Q
 
+from blog_app.models import BlockUser
+
 class BlogPostSearchFilterBackend(filters.BaseFilterBackend):
 
     def filter_queryset(self, request, queryset, view):
@@ -26,7 +28,16 @@ class BlogPostTagFilterBackend(filters.BaseFilterBackend):
         if tag_list:
             queryset = queryset.filter(tags__name__in=tag_list)
         return queryset
-    
+
+class BlogPostBlockUserFilterBackend(filters.BaseFilterBackend):
+
+    def filter_queryset(self, request, queryset, view):
+        login_user = request.user 
+        blocked_by_author = BlockUser.objects.filter(block_user=login_user).distinct().values_list('author')
+        if login_user:
+            queryset = queryset.exclude(author__in=blocked_by_author)
+        return queryset
+
 
 class TagSearchFilterBackend(filters.BaseFilterBackend):
 
@@ -36,3 +47,13 @@ class TagSearchFilterBackend(filters.BaseFilterBackend):
         if search:
             queryset = queryset.filter(name__icontains=search)
         return queryset
+    
+
+class BlockUserFilterBackend(filters.BaseFilterBackend):
+
+    def filter_queryset(self, request, queryset, view):
+        login_user = request.user
+        if login_user:
+            queryset = queryset.filter(author=login_user)
+        return queryset
+    
