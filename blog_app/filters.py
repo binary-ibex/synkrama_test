@@ -33,9 +33,10 @@ class BlogPostBlockUserFilterBackend(filters.BaseFilterBackend):
 
     def filter_queryset(self, request, queryset, view):
         login_user = request.user 
-        blocked_by_author = BlockUser.objects.filter(block_user=login_user).distinct().values_list('author')
-        if login_user:
-            queryset = queryset.exclude(author__in=blocked_by_author)
+        if not login_user.is_superuser:
+            blocked_by_author = BlockUser.objects.filter(block_user=login_user).distinct().values_list('author')
+            if login_user:
+                queryset = queryset.exclude(author__in=blocked_by_author)
         return queryset
 
 
